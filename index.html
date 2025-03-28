@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Advanced Space Rocks</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: black;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let ship = {
+            x: canvas.width / 4,
+            y: canvas.height / 2,
+            rotation: 0,
+            rotationSpeed: 0.05,
+            acceleration: 0.2,
+            velocity: { x: 0, y: 0 },
+            health: 100,
+            invulnerable: 0,
+        };
+
+        let bullets = [];
+        let asteroids = [];
+        let explosions = [];
+
+        function createAsteroid() {
+            let x = canvas.width + 100;
+            let y = Math.random() * canvas.height;
+            let speedX = -Math.random() * 3 - 1;
+            let speedY = (Math.random() - 0.5) * 2;
+            asteroids.push({ x, y, speedX, speedY, size: 50 });
+        }
+
+        function createExplosion(x, y) {
+            explosions.push({ x, y, timer: 20 });
+        }
+
+        function drawShip() {
+            ctx.save();
+            ctx.translate(ship.x, ship.y);
+            ctx.rotate(ship.rotation);
+            ctx.beginPath();
+            ctx.moveTo(0, -25);
+            ctx.lineTo(15, 25);
+            ctx.lineTo(-15, 25);
+            ctx.closePath();
+            ctx.strokeStyle = "white";
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawBullet(bullet) {
+            ctx.fillStyle = "yellow";
+            ctx.fillRect(bullet.x - 2.5, bullet.y - 5, 5, 10);
+        }
+
+        function drawAsteroid(asteroid) {
+            ctx.fillStyle = "gray";
+            ctx.beginPath();
+            ctx.arc(asteroid.x, asteroid.y, asteroid.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawExplosion(explosion) {
+            ctx.fillStyle = "red";
+            ctx.beginPath();
+            ctx.arc(explosion.x, explosion.y, 25, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function update() {
+            // Clear canvas
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Ship movement
+            if (keys["ArrowLeft"]) ship.rotation -= ship.rotationSpeed;
+            if (keys["ArrowRight"]) ship.rotation += ship.rotationSpeed;
+            if (keys["ArrowUp"]) {
+                ship.velocity.x += ship.acceleration * Math.cos(ship.rotation - Math.PI / 2);
+                ship.velocity.y += ship.acceleration * Math.sin(ship.rotation - Math.PI / 2);
+            }
+            ship.velocity.x *= 0.99;
+            ship.velocity.y *= 0.99;
+            ship.x += ship.velocity.x;
+            ship.y += ship.velocity.y;
+
+            // Keep ship within bounds
+            if (ship.x < 0) ship.x = 0;
+            if (ship.x > canvas.width) ship.x = canvas.width;
+            if (ship.y < 0) ship.y = 0;
+            if (ship.y > canvas.height) ship.y = canvas.height;
+
+            // Generate asteroids
+            if (Math.random() < 0.01) createAsteroid();
+
+            // Asteroid movement
+            for (let asteroid of asteroids) {
+                asteroid.x += asteroid.speedX;
+                asteroid.y += asteroid.speedY;
+            }
+
+            // Bullet movement
+            for (let bullet of bullets) {
+                bullet.x += 10 * Math.cos(bullet.rotation - Math.PI / 2);
+                bullet.y += 10 * Math.sin(bullet.rotation - Math.PI / 2);
+            }
+
+            // Collision detection
+            for (let asteroid of asteroids) {
+                if (
+                    ship.x < asteroid.x + asteroid.size / 2 &&
+                    ship.x > asteroid.x - asteroid.size / 2 &&
+                    ship.y < asteroid.y + asteroid.size / 2 &&
+                    ship.y > asteroid.y - asteroid.size / 2 && ship.invulnerable <= 0
+                ) {
+                    ship.health -= 20;
+                    ship.invulnerable = 60;
+                    createExplosion(asteroid.x, asteroid.y);
+                    asteroids.splice(asteroids.indexOf(asteroid), 1);
+                }
+            }
+            for (let bullet of bullets){
+                for(let asteroid of asteroids){
+                    if(
+                        bullet.x < asteroid.x + asteroid.size / 2 &&
+                        bullet.x > asteroid.x - asteroid.size / 2 &&
+                        bullet.y < asteroid.y + asteroid.size / 2 &&
+                        bullet.y > asteroid.y - asteroid.size / 2
+                    ) {
+                        createExplosion(asteroid.x, asteroid.y);
+                        asteroids.splice(asteroids.indexOf(asteroid), 1);
+                        bullets.splice(bullets.indexOf(bullet), 1);
+                    }
+                }
+            }
+
+            if(ship.health <= 0) {
+                alert("Game Over!");
+                clearInterval(gameLoop);
+            }
+
+            if(ship.invulnerable > 0){
+                ship.invulnerable--;
+            }
+
+            for(let explosion of explosions){
+                explosion.timer--;
+                if (explosion.timer <= 0) {
+                    explosions.splice(explosions.indexOf(explosion), 1);
+                }
+            }
+
+            // Draw everything
+            drawShip();
+            bullets.forEach(drawBullet);
+            asteroids.forEach(drawAsteroid);
+            explosions.forEach(drawExplosion);
+        }
+
+        let keys = {};
+        window.addEventListener("keydown", (e) => {
+            keys[e.key] = true;
+            if(e.key == " "){
+                bullets.push({x: ship.x + 25 * Math.cos(ship.rotation - Math.PI / 2), y: ship.y + 25 * Math.sin(ship.rotation - Math.PI/2), rotation: ship.rotation})
+            }
+        });
+        window.addEventListener("keyup", (e) => {
+            keys[e.key] = false;
+        });
+
+        const gameLoop = setInterval(update, 1000 / 60);
+    </script>
+</body>
+</html>
