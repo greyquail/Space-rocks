@@ -1,0 +1,102 @@
+import pygame
+import random
+import math
+
+# Initialize Pygame
+pygame.init()
+
+# Screen dimensions
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Space Rocks Advanced")
+
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+
+# Ship properties
+ship_img = pygame.image.load("ship.png") #replace with your ship image
+ship_img = pygame.transform.scale(ship_img, (50, 50))
+ship_rect = ship_img.get_rect(center=(WIDTH // 4, HEIGHT // 2))
+ship_speed = 5
+ship_rotation = 0
+ship_rotation_speed = 5
+ship_acceleration = 0.2
+ship_velocity = [0, 0]
+
+# Asteroid properties
+asteroid_img = pygame.image.load("asteroid.png")#replace with your asteroid image
+asteroid_img = pygame.transform.scale(asteroid_img, (50, 50))
+asteroids = []
+
+# Game loop
+running = True
+clock = pygame.time.Clock()
+
+def create_asteroid():
+    x = random.randint(WIDTH, WIDTH + 100)
+    y = random.randint(0, HEIGHT)
+    speed_x = random.uniform(-3, -1)
+    speed_y = random.uniform(-1, 1)
+    asteroids.append({"rect": asteroid_img.get_rect(center=(x, y)), "speed": [speed_x, speed_y]})
+
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT]:
+        ship_rotation += ship_rotation_speed
+    if keys[pygame.K_RIGHT]:
+        ship_rotation -= ship_rotation_speed
+    if keys[pygame.K_UP]:
+        ship_velocity[0] += ship_acceleration * math.cos(math.radians(ship_rotation - 90))
+        ship_velocity[1] += ship_acceleration * math.sin(math.radians(ship_rotation - 90))
+    # Apply friction
+    ship_velocity[0] *= 0.99
+    ship_velocity[1] *= 0.99
+
+    # Update ship position
+    ship_rect.x += ship_velocity[0]
+    ship_rect.y += ship_velocity[1]
+
+    # Keep ship within screen bounds
+    if ship_rect.left < 0:
+        ship_rect.left = 0
+    if ship_rect.right > WIDTH:
+        ship_rect.right = WIDTH
+    if ship_rect.top < 0:
+        ship_rect.top = 0
+    if ship_rect.bottom > HEIGHT:
+        ship_rect.bottom = HEIGHT
+
+    # Generate asteroids
+    if random.random() < 0.01:
+        create_asteroid()
+
+    # Update asteroid positions
+    for asteroid in asteroids:
+        asteroid["rect"].x += asteroid["speed"][0]
+        asteroid["rect"].y += asteroid["speed"][1]
+
+    # Collision detection
+    for asteroid in asteroids:
+        if ship_rect.colliderect(asteroid["rect"]):
+            print("Game Over!")
+            running = False
+
+    # Draw everything
+    screen.fill(BLACK)
+    rotated_ship = pygame.transform.rotate(ship_img, ship_rotation)
+    ship_rect_rotated = rotated_ship.get_rect(center=ship_rect.center)
+    screen.blit(rotated_ship, ship_rect_rotated)
+    for asteroid in asteroids:
+        screen.blit(asteroid_img, asteroid["rect"])
+    pygame.display.flip()
+
+    clock.tick(60)
+
+pygame.quit()
+
